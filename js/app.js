@@ -5,13 +5,30 @@ const groceryContainer = document.querySelector(".grocery-container");
 const groceryList = document.querySelector(".grocery-list");
 const alertMessage = document.querySelector(".alert");
 const listClearBtn = document.querySelector(".clear-btn");
-
+const localStorage = window.localStorage;
 let editElement;
 let editflag = false;
 
+// keep item on refresh
+window.addEventListener("DOMContentLoaded", setupItems);
+
 // add item to the list
-function createItem(title) {
+groceryForm.addEventListener("submit", addItem);
+
+// remove all items from the list
+listClearBtn.addEventListener("click", clearList);
+
+// delete or edit item in the list
+groceryList.addEventListener("click", updateList);
+
+// *****************************
+function createItem(id, title) {
   const article = document.createElement("article");
+
+  const attribute = document.createAttribute("data-id");
+  attribute.value = id;
+  article.setAttributeNode(attribute);
+
   article.classList.add("grocery-item");
 
   article.innerHTML = `<p class="title">${title}</p>
@@ -24,7 +41,7 @@ function createItem(title) {
       </button>
     </div>`;
 
-  return article;
+  groceryList.append(article);
 }
 
 function showAlert(text, action) {
@@ -39,20 +56,21 @@ function showAlert(text, action) {
 
 function addItem(e) {
   e.preventDefault();
+  const groceryInputValue = groceryInput.value;
 
-  if (editflag) {
+  if (editflag && groceryInputValue) {
     const editedValue = groceryInput.value;
     editElement.children[0].innerHTML = editedValue;
 
+    let itemId = editElement.dataset.id;
+    updateLocalStorage(itemId, editedValue);
+
     submitBtn.innerHTML = "submit";
-    groceryInput.value = "";
-    editflag = false;
+    setBackToDefault();
 
     showAlert("List updated", "success");
     return;
   }
-
-  const groceryInputValue = groceryInput.value;
 
   if (!groceryInputValue) {
     showAlert("Enter Some Value", "danger");
@@ -63,31 +81,22 @@ function addItem(e) {
 
   groceryContainer.classList.add("show-container");
 
-  const newItem = createItem(groceryInputValue);
+  const id = new Date().getTime().toString();
+  createItem(id, groceryInputValue);
 
-  groceryList.append(newItem);
+  addItemToLocalStorage(id, groceryInputValue);
 
-  groceryInput.value = "";
+  setBackToDefault();
 }
-
-groceryForm.addEventListener("submit", addItem);
-
-// remove all items from the list
-
-listClearBtn.addEventListener("click", clearList);
 
 function clearList() {
   groceryList.innerHTML = "";
 
   groceryContainer.classList.remove("show-container");
 
+  localStorage.removeItem("list");
   showAlert("List is Empty", "danger");
 }
-
-// delete or edit item in the list
-// use event delegation to access the edit and delete button
-
-groceryList.addEventListener("click", updateList);
 
 function updateList(e) {
   if (e.target.parentElement.tagName == "BUTTON") {
@@ -95,12 +104,16 @@ function updateList(e) {
     const currentItem = currentBtn.parentElement.parentElement;
 
     if (currentBtn.classList.contains("delete-btn")) {
+      let id = currentItem.dataset.id;
+      removeFromLocalStorage(id);
+
       groceryList.removeChild(currentItem);
 
       if (groceryList.children.length == 0) {
         groceryContainer.classList.remove("show-container");
       }
 
+      setBackToDefault();
       showAlert("item removed", "danger");
     }
 
@@ -114,5 +127,60 @@ function updateList(e) {
       editElement = currentItem;
       editflag = true;
     }
+  }
+}
+
+function setBackToDefault() {
+  groceryInput.value = "";
+  editflag = false;
+  submitBtn.innerHTML = "submit";
+}
+
+function getLocalStorage() {
+  return JSON.parse(localStorage.getItem("list")) ?? [];
+}
+
+function addItemToLocalStorage(id, value) {
+  let obj = { id, value };
+
+  let list = getLocalStorage();
+
+  list.push(obj);
+
+  localStorage.setItem("list", JSON.stringify(list));
+}
+
+function removeFromLocalStorage(id) {
+  let list = getLocalStorage();
+
+  let updatedList = list.filter(function removeItem(item) {
+    return item.id != id;
+  });
+
+  localStorage.setItem("list", JSON.stringify(updatedList));
+}
+
+function updateLocalStorage(id, value) {
+  let list = getLocalStorage();
+
+  let updatedList = list.map(function updateItem(item) {
+    if (item.id == id) {
+      item.value = value;
+    }
+
+    return item;
+  });
+
+  localStorage.setItem("list", JSON.stringify(updatedList));
+}
+
+function setupItems() {
+  let list = getLocalStorage();
+
+  if (list.length > 0) {
+    groceryContainer.classList.add("show-container");
+    list.forEach((item) => {
+      createItem(item.id, item.value);
+    });
   }
 }
