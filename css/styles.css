@@ -3,6 +3,7 @@
   --clr-primary-1: hsl(205, 86%, 17%);
 
   /* lighter shades of primary color */
+  --clr-primary-5: #49a6e9;
   --clr-primary-8: hsl(205, 86%, 81%);
 
   /* darkest grey - used for headings */
